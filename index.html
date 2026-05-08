@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plugin Page Builder</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root {
+    --bg-deep: #0a0c0f;
+    --bg-main: #0d1117;
+    --bg-panel: #161b22;
+    --bg-card: #1a2030;
+    --bg-hover: #1e2533;
+    --border: #21262d;
+    --border-bright: #30363d;
+    --accent: #3b82f6;
+    --accent2: #22d3ee;
+    --accent3: #a78bfa;
+    --green: #3fb950;
+    --red: #f85149;
+    --yellow: #d29922;
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --text-muted: #484f58;
+    --canvas-w: 520px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: 240px;
+    min-width: 240px;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #sidebar-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  #sidebar-header h1 {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--accent2);
+  }
+  #sidebar-header p { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  #block-palette {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+  }
+  #block-palette::-webkit-scrollbar { width: 4px; }
+  #block-palette::-webkit-scrollbar-track { background: transparent; }
+  #block-palette::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+  .palette-group { margin-bottom: 12px; }
+  .palette-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0 4px 6px;
+  }
+  .palette-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    cursor: grab;
+    margin-bottom: 5px;
+    transition: all .15s;
+    user-select: none;
+  }
+  .palette-item:hover { border-color: var(--accent); background: var(--bg-hover); }
+  .palette-item .pi { font-size: 16px; }
+  .palette-item .pt { font-size: 12px; font-weight: 500; color: var(--text-primary); }
+  .palette-item .pd { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+
+  /* ── TOOLBAR ── */
+  #toolbar {
+    width: 48px;
+    min-width: 48px;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 0;
+    gap: 4px;
+  }
+  .tool-btn {
+    width: 34px; height: 34px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 15px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+    position: relative;
+  }
+  .tool-btn:hover { background: var(--bg-hover); border-color: var(--border-bright); color: var(--text-primary); }
+  .tool-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tool-sep { width: 24px; height: 1px; background: var(--border); margin: 4px 0; }
+  .tool-tip {
+    position: absolute;
+    left: 44px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-bright);
+    color: var(--text-primary);
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .1s;
+    z-index: 100;
+  }
+  .tool-btn:hover .tool-tip { opacity: 1; }
+
+  /* ── CANVAS AREA ── */
+  #canvas-area {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #070a0d;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 0 80px;
+  }
+  #canvas-area::-webkit-scrollbar { width: 6px; }
+  #canvas-area::-webkit-scrollbar-track { background: transparent; }
+  #canvas-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── PAGE CANVAS ── */
+  #page-canvas {
+    width: var(--canvas-w);
+    background: #0f1319;
+    box-shadow: 0 0 0 1px var(--border), 0 20px 60px rgba(0,0,0,.6);
+    min-height: 200px;
+    position: relative;
+  }
+  #page-canvas.drag-over { outline: 2px dashed var(--accent); outline-offset: 2px; }
+
+  /* ── DROP HINT ── */
+  #drop-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 48px;
+    color: var(--text-muted);
+    font-size: 13px;
+    text-align: center;
+  }
+  #drop-hint .dh-icon { font-size: 32px; opacity: .4; }
+
+  /* ── BLOCK WRAPPER ── */
+  .block-wrapper {
+    position: relative;
+    cursor: default;
+  }
+  .block-wrapper:hover > .block-controls { opacity: 1; }
+  .block-controls {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity .15s;
+    z-index: 50;
+  }
+  .bc-btn {
+    width: 24px; height: 24px;
+    border-radius: 4px;
+    border: 1px solid var(--border-bright);
+    background: rgba(13,17,23,.9);
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .1s;
+  }
+  .bc-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .bc-btn.del:hover { background: #3d1c1c; border-color: var(--red); color: var(--red); }
+  .drag-handle {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 18px;
+    cursor: grab;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0;
+    transition: opacity .15s;
+    z-index: 10;
+  }
+  .block-wrapper:hover > .drag-handle { opacity: 1; }
+  .drag-handle::before {
+    content: '⠿';
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+  .block-wrapper.dragging { opacity: .3; }
+  .drop-indicator {
+    height: 3px;
+    background: var(--accent);
+    margin: 0;
+    border-radius: 2px;
+    display: none;
+  }
+  .drop-indicator.active { display: block; }
+
+  /* ─────────────────────────────────── */
+  /* ── BLOCK STYLES (mirror the image) */
+  /* ─────────────────────────────────── */
+
+  [contenteditable] { outline: none; }
+  [contenteditable]:focus { background: rgba(59,130,246,.06); border-radius: 3px; }
+
+  /* HEADER BLOCK */
+  .block-header {
+    padding: 28px 24px 24px;
+    text-align: center;
+    background: linear-gradient(180deg, #0f1319 0%, #111720 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  .block-header .bh-badge {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-muted);
+    border: 1px solid var(--border-bright);
+    padding: 2px 8px;
+    border-radius: 2px;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+  }
+  .block-header .bh-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 38px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .block-header .bh-title .accent { color: var(--accent); }
+  .block-header .bh-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    font-style: italic;
+  }
+  .bh-tags {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .bh-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    padding: 3px 10px;
+    border-radius: 3px;
+    border: 1px solid var(--border-bright);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .bh-tag:hover { border-color: var(--accent); color: var(--accent); }
+  .bh-add-tag {
+    font-size: 9px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    border: 1px dashed var(--border-bright);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .bh-add-tag:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* SECTION DIVIDER */
+  .block-divider {
+    padding: 22px 24px 6px;
+    background: #0f1319;
+  }
+  .block-divider .bd-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .block-divider .bd-label::before {
+    content: '';
+    display: block;
+    width: 20px; height: 2px;
+    background: var(--accent);
+    border-radius: 1px;
+  }
+  .block-divider .bd-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .block-divider .bd-title span { color: var(--accent2); }
+
+  /* FEATURES GRID */
+  .block-features {
+    padding: 12px 16px 20px;
+    background: #0f1319;
+  }
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .feature-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+    transition: border-color .15s;
+  }
+  .feature-card:hover { border-color: var(--border-bright); }
+  .feature-card .fc-icon { font-size: 18px; margin-bottom: 6px; display: block; }
+  .feature-card .fc-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 5px;
+  }
+  .feature-card .fc-desc {
+    font-size: 10px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .feature-card .fc-desc strong { color: var(--text-primary); font-weight: 600; }
+  .features-add-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed var(--border-bright);
+    border-radius: 4px;
+    padding: 12px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 18px;
+    transition: all .15s;
+    background: transparent;
+    width: 100%;
+  }
+  .features-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* SCREENSHOT GRID */
+  .block-screenshots {
+    padding: 12px 16px 20px;
+    background: #0f1319;
+  }
+  .screenshots-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .screenshot-cell {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    aspect-ratio: 16/10;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all .15s;
+    overflow: hidden;
+    position: relative;
+  }
+  .screenshot-cell img {
+    width: 100%; height: 100%; object-fit: cover; border-radius: 3px;
+  }
+  .screenshot-cell .sc-placeholder {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; width: 100%; height: 100%;
+  }
+  .screenshot-cell:hover { border-color: var(--accent); }
+  .screenshot-cell .sc-icon { font-size: 22px; color: var(--text-muted); }
+  .screenshot-cell .sc-label { font-size: 10px; color: var(--text-muted); }
+  .screenshot-cell .sc-caption {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,.75);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-secondary);
+    padding: 4px 8px;
+    display: none;
+  }
+  .screenshot-cell:has(img) .sc-caption { display: block; }
+  .sc-overlay {
+    position: absolute; inset: 0;
+    background: rgba(59,130,246,.12);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity .15s;
+    font-size: 20px;
+  }
+  .screenshot-cell:hover .sc-overlay { opacity: 1; }
+
+  /* STATS ROW */
+  .block-stats {
+    padding: 20px 16px;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .stats-grid {
+    display: flex;
+    gap: 0;
+    justify-content: space-around;
+  }
+  .stat-item {
+    text-align: center;
+    flex: 1;
+    position: relative;
+  }
+  .stat-item + .stat-item::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 10%; bottom: 10%;
+    width: 1px;
+    background: var(--border);
+  }
+  .stat-item .sv {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent2);
+    display: block;
+  }
+  .stat-item .sl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .stats-add-btn {
+    background: transparent; border: 1px dashed var(--border-bright); color: var(--text-muted);
+    border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 11px; margin-top: 8px;
+    width: 100%;
+  }
+  .stats-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* PERMISSION TABLE */
+  .block-table {
+    padding: 12px 16px 20px;
+    background: #0f1319;
+  }
+  .perm-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  .perm-table th {
+    background: #1a2235;
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: .5px;
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-bright);
+    font-weight: 600;
+  }
+  .perm-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .perm-table tr:last-child td { border-bottom: none; }
+  .perm-table tr:nth-child(odd) td { background: rgba(255,255,255,.01); }
+  .perm-table .check { color: var(--green); }
+  .perm-table .cross { color: var(--red); }
+  .perm-table .rank-cell { color: var(--text-primary); font-weight: 600; }
+  .table-add-btn {
+    background: transparent; border: 1px dashed var(--border-bright); color: var(--text-muted);
+    border-radius: 4px; padding: 5px; cursor: pointer; font-size: 11px; margin-top: 8px; width: 100%;
+  }
+  .table-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* COMMANDS BLOCK */
+  .block-commands {
+    padding: 12px 16px 20px;
+    background: #0f1319;
+  }
+  .cmd-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .cmd-cell {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 10px;
+    transition: border-color .15s;
+  }
+  .cmd-cell:hover { border-color: var(--border-bright); }
+  .cmd-cell .cc-cmd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 3px;
+  }
+  .cmd-cell .cc-desc {
+    font-size: 9px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+  .cmd-add-btn {
+    background: transparent; border: 1px dashed var(--border-bright); color: var(--text-muted);
+    border-radius: 4px; padding: 8px 10px; cursor: pointer; font-size: 14px; width: 100%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cmd-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* TEXT BLOCK */
+  .block-text {
+    padding: 16px 24px;
+    background: #0f1319;
+  }
+  .block-text .bt-content {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+  .block-text .bt-content strong { color: var(--text-primary); }
+
+  /* DEPENDENCIES BLOCK */
+  .block-deps {
+    padding: 16px 16px 20px;
+    background: #0f1319;
+    border-top: 1px solid var(--border);
+  }
+  .deps-grid {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .dep-badge {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-secondary);
+  }
+  .dep-badge .dep-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .dep-badge .dep-dot.req { background: var(--red); }
+  .dep-badge .dep-dot.opt { background: var(--yellow); }
+  .dep-add-btn {
+    background: transparent; border: 1px dashed var(--border-bright); color: var(--text-muted);
+    border-radius: 4px; padding: 6px 12px; cursor: pointer; font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .dep-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── PROPERTIES PANEL ── */
+  #props-panel {
+    width: 220px;
+    min-width: 220px;
+    background: var(--bg-panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #props-header {
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: .5px;
+  }
+  #props-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+  }
+  #props-content::-webkit-scrollbar { width: 4px; }
+  #props-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .prop-group { margin-bottom: 16px; }
+  .prop-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .prop-input {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 11px;
+    padding: 6px 8px;
+    outline: none;
+    font-family: 'Inter', sans-serif;
+    transition: border-color .1s;
+  }
+  .prop-input:focus { border-color: var(--accent); }
+  .prop-row {
+    display: flex; gap: 6px;
+  }
+  .prop-row .prop-input { flex: 1; }
+  .color-row {
+    display: flex; gap: 6px; align-items: center;
+  }
+  .color-swatch {
+    width: 28px; height: 28px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  select.prop-input { cursor: pointer; }
+  .prop-btn {
+    width: 100%;
+    padding: 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-bright);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all .15s;
+    margin-bottom: 5px;
+  }
+  .prop-btn:hover { background: var(--bg-hover); border-color: var(--accent); color: var(--accent); }
+  .prop-btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  .prop-btn.primary:hover { background: #2563eb; }
+  .prop-btn.danger { border-color: #3d1c1c; color: var(--red); }
+  .prop-btn.danger:hover { background: #3d1c1c; }
+  .no-select { color: var(--text-muted); font-size: 11px; text-align: center; padding-top: 24px; }
+
+  /* FOOTER */
+  #page-footer {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-muted);
+    text-align: center;
+    letter-spacing: .5px;
+  }
+  #page-footer span { color: var(--text-secondary); }
+
+  /* Export overlay */
+  #export-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.8);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  #export-overlay.show { display: flex; }
+  #export-box {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-bright);
+    border-radius: 8px;
+    padding: 24px;
+    width: 400px;
+    text-align: center;
+  }
+  #export-box h3 { font-family: 'Rajdhani', sans-serif; font-size: 20px; margin-bottom: 6px; }
+  #export-box p { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
+  #export-preview { width: 100%; border-radius: 4px; margin-bottom: 14px; border: 1px solid var(--border); }
+  .exp-btn {
+    padding: 9px 20px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    margin: 0 4px;
+  }
+  .exp-dl { background: var(--accent); color: #fff; }
+  .exp-cl { background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-bright); }
+
+  /* Animations */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .block-wrapper { animation: fadeIn .2s ease; }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--bg-panel);
+    border: 1px solid var(--border-bright);
+    color: var(--text-primary);
+    font-size: 12px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .2s;
+    z-index: 500;
+  }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR: Block Palette -->
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h1>⚡ PLUGIN BUILDER</h1>
+    <p>Drag blocks onto the canvas</p>
+  </div>
+  <div id="block-palette">
+    <div class="palette-group">
+      <div class="palette-label">Structure</div>
+      <div class="palette-item" draggable="true" data-type="header">
+        <span class="pi">🏷️</span>
+        <div><div class="pt">Plugin Header</div><div class="pd">Title, badge & tags</div></div>
+      </div>
+      <div class="palette-item" draggable="true" data-type="divider">
+        <span class="pi">📌</span>
+        <div><div class="pt">Section Divider</div><div class="pd">Label + heading</div></div>
+      </div>
+      <div class="palette-item" draggable="true" data-type="text">
+        <span class="pi">📝</span>
+        <div><div class="pt">Text Block</div><div class="pd">Free text paragraph</div></div>
+      </div>
+    </div>
+    <div class="palette-group">
+      <div class="palette-label">Content</div>
+      <div class="palette-item" draggable="true" data-type="features">
+        <span class="pi">🗃️</span>
+        <div><div class="pt">Features Grid</div><div class="pd">Icon + title + desc</div></div>
+      </div>
+      <div class="palette-item" draggable="true" data-type="screenshots">
+        <span class="pi">🖼️</span>
+        <div><div class="pt">Screenshots</div><div class="pd">2-col image grid</div></div>
+      </div>
+      <div class="palette-item" draggable="true" data-type="stats">
+        <span class="pi">📊</span>
+        <div><div class="pt">Stats Bar</div><div class="pd">Key metrics row</div></div>
+      </div>
+    </div>
+    <div class="palette-group">
+      <div class="palette-label">Technical</div>
+      <div class="palette-item" draggable="true" data-type="table">
+        <span class="pi">📋</span>
+        <div><div class="pt">Rank/Perm Table</div><div class="pd">Permission matrix</div></div>
+      </div>
+      <div class="palette-item" draggable="true" data-type="commands">
+        <span class="pi">💻</span>
+        <div><div class="pt">Commands</div><div class="pd">Command reference grid</div></div>
+      </div>
+      <div class="palette-item" draggable="true" data-type="deps">
+        <span class="pi">🔗</span>
+        <div><div class="pt">Dependencies</div><div class="pd">Requirement badges</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <button class="tool-btn" onclick="exportImage()" title="Export">📷<span class="tool-tip">Export PNG</span></button>
+  <button class="tool-btn" onclick="copyHTML()" title="Copy">📋<span class="tool-tip">Copy HTML</span></button>
+  <div class="tool-sep"></div>
+  <button class="tool-btn" onclick="clearCanvas()" title="Clear">🗑️<span class="tool-tip">Clear All</span></button>
+  <div class="tool-sep"></div>
+  <button class="tool-btn" onclick="loadPreset('teams')" title="Teams Preset">⚡<span class="tool-tip">TeamsPlugin Preset</span></button>
+  <button class="tool-btn" onclick="loadPreset('mini')" title="Mini Preset">🎯<span class="tool-tip">Simple Preset</span></button>
+</div>
+
+<!-- CANVAS AREA -->
+<div id="canvas-area">
+  <div id="page-canvas" ondragover="onCanvasDragOver(event)" ondrop="onCanvasDrop(event)" ondragleave="onCanvasDragLeave(event)">
+    <div id="drop-hint">
+      <span class="dh-icon">⚡</span>
+      <strong>Drag blocks here</strong>
+      <span style="font-size:11px;color:var(--text-muted)">Or click a preset in the toolbar →</span>
+    </div>
+    <div id="page-footer" style="display:none">
+      <span id="footer-text">PluginName v1.0 · by Author · Paper 1.21</span>
+    </div>
+  </div>
+</div>
+
+<!-- PROPERTIES PANEL -->
+<div id="props-panel">
+  <div id="props-header">Properties</div>
+  <div id="props-content">
+    <div class="no-select">Select a block to edit its properties</div>
+  </div>
+</div>
+
+<!-- EXPORT OVERLAY -->
+<div id="export-overlay">
+  <div id="export-box">
+    <h3>Export Page</h3>
+    <p>Your plugin page as a PNG image</p>
+    <img id="export-preview" src="" alt="">
+    <div>
+      <button class="exp-btn exp-dl" onclick="downloadExport()">⬇ Download PNG</button>
+      <button class="exp-btn exp-cl" onclick="closeExport()">✕ Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─────────────────────────────────────
+// STATE
+// ─────────────────────────────────────
+let blockCounter = 0;
+let selectedBlock = null;
+let dragSrcType = null;  // from palette
+let dragSrcEl = null;    // reorder drag
+let dragOverEl = null;
+
+// ─────────────────────────────────────
+// PALETTE DRAG START
+// ─────────────────────────────────────
+document.querySelectorAll('.palette-item').forEach(item => {
+  item.addEventListener('dragstart', e => {
+    dragSrcType = item.dataset.type;
+    dragSrcEl = null;
+    e.dataTransfer.effectAllowed = 'copy';
+  });
+});
+
+// ─────────────────────────────────────
+// CANVAS DROP
+// ─────────────────────────────────────
+function onCanvasDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = dragSrcEl ? 'move' : 'copy';
+  document.getElementById('page-canvas').classList.add('drag-over');
+  // Show drop indicators
+  document.querySelectorAll('.drop-indicator').forEach(d => d.classList.remove('active'));
+  const target = e.target.closest('.block-wrapper');
+  if (target) {
+    const rect = target.getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+    const ind = e.clientY < mid
+      ? target.previousElementSibling
+      : target.nextElementSibling;
+    if (ind && ind.classList.contains('drop-indicator')) ind.classList.add('active');
+  }
+}
+function onCanvasDragLeave(e) {
+  if (!e.currentTarget.contains(e.relatedTarget)) {
+    document.getElementById('page-canvas').classList.remove('drag-over');
+    document.querySelectorAll('.drop-indicator').forEach(d => d.classList.remove('active'));
+  }
+}
+function onCanvasDrop(e) {
+  e.preventDefault();
+  document.getElementById('page-canvas').classList.remove('drag-over');
+  document.querySelectorAll('.drop-indicator').forEach(d => d.classList.remove('active'));
+
+  const canvas = document.getElementById('page-canvas');
+
+  if (dragSrcEl) {
+    // Reorder
+    const target = e.target.closest('.block-wrapper');
+    if (target && target !== dragSrcEl) {
+      const rect = target.getBoundingClientRect();
+      const after = e.clientY > rect.top + rect.height / 2;
+      if (after) target.after(dragSrcEl);
+      else target.before(dragSrcEl);
+    }
+    dragSrcEl.classList.remove('dragging');
+    dragSrcEl = null;
+  } else if (dragSrcType) {
+    const block = createBlock(dragSrcType);
+    const target = e.target.closest('.block-wrapper');
+    if (target) {
+      const rect = target.getBoundingClientRect();
+      if (e.clientY > rect.top + rect.height / 2) target.after(block);
+      else target.before(block);
+    } else {
+      const footer = document.getElementById('page-footer');
+      canvas.insertBefore(block, footer);
+    }
+    checkDropHint();
+    dragSrcType = null;
+  }
+}
+
+// ─────────────────────────────────────
+// CREATE BLOCK
+// ─────────────────────────────────────
+function createBlock(type, data) {
+  blockCounter++;
+  const id = 'block-' + blockCounter;
+  const wrapper = document.createElement('div');
+  wrapper.className = 'block-wrapper';
+  wrapper.dataset.type = type;
+  wrapper.dataset.id = id;
+
+  // Drag handle
+  const handle = document.createElement('div');
+  handle.className = 'drag-handle';
+  handle.setAttribute('draggable', 'true');
+  handle.addEventListener('dragstart', e => {
+    dragSrcEl = wrapper;
+    dragSrcType = null;
+    wrapper.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  handle.addEventListener('dragend', () => {
+    wrapper.classList.remove('dragging');
+  });
+
+  // Controls
+  const controls = document.createElement('div');
+  controls.className = 'block-controls';
+  controls.innerHTML = `
+    <button class="bc-btn" onclick="moveBlockUp('${id}')" title="Move up">↑</button>
+    <button class="bc-btn" onclick="moveBlockDown('${id}')" title="Move down">↓</button>
+    <button class="bc-btn del" onclick="deleteBlock('${id}')" title="Delete">✕</button>
+  `;
+
+  // Inner HTML
+  const inner = document.createElement('div');
+  inner.className = 'block-inner';
+  inner.innerHTML = getBlockHTML(type, data);
+
+  wrapper.appendChild(handle);
+  wrapper.appendChild(controls);
+  wrapper.appendChild(inner);
+
+  // Drop indicator after
+  const ind = document.createElement('div');
+  ind.className = 'drop-indicator';
+  wrapper.after(ind);
+
+  // Click to select
+  wrapper.addEventListener('click', e => {
+    if (e.target.closest('.bc-btn') || e.target.closest('.drag-handle')) return;
+    selectBlock(wrapper);
+  });
+
+  // Init interactive elements
+  setTimeout(() => initBlockInteractions(wrapper, type), 0);
+
+  return wrapper;
+}
+
+function getBlockHTML(type, d) {
+  switch(type) {
+    case 'header': return headerHTML(d);
+    case 'divider': return dividerHTML(d);
+    case 'features': return featuresHTML(d);
+    case 'screenshots': return screenshotsHTML(d);
+    case 'stats': return statsHTML(d);
+    case 'table': return tableHTML(d);
+    case 'commands': return commandsHTML(d);
+    case 'text': return textHTML(d);
+    case 'deps': return depsHTML(d);
+    default: return '<div style="padding:16px;color:var(--text-muted)">Unknown block</div>';
+  }
+}
+
+// ─────────────────────────────────────
+// BLOCK HTML TEMPLATES
+// ─────────────────────────────────────
+function headerHTML(d={}) {
+  const name = d.name || 'PluginName';
+  const accent = d.accent || 'Plugin';
+  const sub = d.sub || 'The best plugin for your server — without the bloat.';
+  const badge = d.badge || 'Paper 1.21 · v1.0.0 · by Author';
+  const tags = d.tags || ['GUI-Driven','SQLite','Async','Config'];
+  const tagsHTML = tags.map(t => `<span class="bh-tag" contenteditable="true">${t}</span>`).join('');
+  return `<div class="block-header">
+    <div class="bh-badge" contenteditable="true">${badge}</div>
+    <div class="bh-title" contenteditable="true">${name.replace(accent, `<span class="accent" contenteditable="false">${accent}</span>`)}</div>
+    <div class="bh-sub" contenteditable="true">${sub}</div>
+    <div class="bh-tags">${tagsHTML}<button class="bh-add-tag" onclick="addTag(this)">+ tag</button></div>
+  </div>`;
+}
+
+function dividerHTML(d={}) {
+  return `<div class="block-divider">
+    <div class="bd-label" contenteditable="true">${d.label||'FEATURES'}</div>
+    <div class="bd-title">${d.title||'Everything your players need.'} <span contenteditable="true">${d.sub||'Nothing they don\'t.'}</span></div>
+  </div>`;
+}
+
+function featuresHTML(d={}) {
+  const items = d.items || [
+    {icon:'✕',title:'TEAM CREATION & MANAGEMENT',desc:'Create teams and expand armies through <strong>full command and GUI support</strong>.'},
+    {icon:'🏅',title:'5-TIER RANK SYSTEM',desc:'Owner · Co-Owner · Manager · Member · Recruit — each rank with annually scoped permissions.'},
+    {icon:'🏦',title:'TEAM BANK',desc:'Multi-integrated shared economy bank. <strong>Shorthand input</strong> supports 1k, 2.5m, 1b.'},
+    {icon:'🏠',title:'TEAM HOME',desc:'Set your teleport to a team-ID with <strong>warmup timer</strong>, restricted to Manager+.'},
+    {icon:'🛡️',title:'FRIENDLY FIRE TOGGLE',desc:'Enable or disable <strong>confirmation</strong> between teammates per team. Configurable by Co-Owner+.'},
+    {icon:'🏆',title:'LIVE LEADERBOARDS',desc:'Top teams by kills or balance, and <strong>internal team leaderboards</strong> for top killers and other metrics.'},
+  ];
+  const cards = items.map((it,i) => `
+    <div class="feature-card" data-fi="${i}">
+      <span class="fc-icon" contenteditable="true">${it.icon}</span>
+      <div class="fc-title" contenteditable="true">${it.title}</div>
+      <div class="fc-desc" contenteditable="true">${it.desc}</div>
+    </div>`).join('');
+  return `<div class="block-features">
+    <div class="features-grid">${cards}<button class="features-add-btn" onclick="addFeatureCard(this)">＋</button></div>
+  </div>`;
+}
+
+function screenshotsHTML(d={}) {
+  const items = d.items || [
+    {label:'// TEAM HUB - Main configuration GUI'},
+    {label:'// BANK - Deposit &amp; Withdraw'},
+    {label:'// TEAM STATS - Internal leaderboard'},
+    {label:'// SETTINGS - Team size, FF toggle...'},
+  ];
+  const cells = items.map((it,i) => `
+    <div class="screenshot-cell" onclick="uploadScreenshot(this)" data-si="${i}">
+      <div class="sc-placeholder">
+        <span class="sc-icon">🖼️</span>
+        <span class="sc-label">Click to upload image</span>
+      </div>
+      <div class="sc-overlay">📁</div>
+      <div class="sc-caption" contenteditable="true">${it.label}</div>
+    </div>`).join('');
+  return `<div class="block-screenshots"><div class="screenshots-grid">${cells}</div></div>`;
+}
+
+function statsHTML(d={}) {
+  const items = d.items || [
+    {v:'1.21.x',l:'PAPER VERSION'},
+    {v:'SQLite',l:'DATABASE'},
+    {v:'Async',l:'ALL DB QUERIES'},
+    {v:'5 min',l:'LEADERBOARD REFRESH'},
+    {v:'5',l:'PERMISSION RANKS'},
+  ];
+  const cells = items.map((it,i) => `
+    <div class="stat-item" data-si="${i}">
+      <span class="sv" contenteditable="true">${it.v}</span>
+      <span class="sl" contenteditable="true">${it.l}</span>
+    </div>`).join('');
+  return `<div class="block-stats">
+    <div class="stats-grid">${cells}</div>
+    <button class="stats-add-btn" onclick="addStat(this)">+ Add stat</button>
+  </div>`;
+}
+
+function tableHTML(d={}) {
+  const cols = d.cols || ['Rank','Bank Withdraw','Team Home','Get Home','Promote/Demote','Settings','Disband/Rename'];
+  const rows = d.rows || [
+    ['👑 Owner','✔','✔','✔','✔','✔','✔'],
+    ['💠 Co-Owner','✔','✔','✔','✔','✔','✗'],
+    ['⚙️ Manager','✗','✔','✔','✔','✗','✗'],
+    ['👤 Member','✗','✗','✔','✗','✗','✗'],
+    ['🔰 Recruit','✗','✗','✗','✗','✗','✗'],
+  ];
+  const thead = cols.map(c => `<th contenteditable="true">${c}</th>`).join('');
+  const tbody = rows.map(r => `<tr>${r.map((c,i) => {
+    const cls = c==='✔' ? 'check' : c==='✗' ? 'cross' : i===0 ? 'rank-cell' : '';
+    return `<td class="${cls}" contenteditable="true">${c}</td>`;
+  }).join('')}</tr>`).join('');
+  return `<div class="block-table">
+    <table class="perm-table">
+      <thead><tr>${thead}</tr></thead>
+      <tbody>${tbody}</tbody>
+    </table>
+    <button class="table-add-btn" onclick="addTableRow(this)">+ Add row</button>
+  </div>`;
+}
+
+function commandsHTML(d={}) {
+  const items = d.items || [
+    {cmd:'/team',desc:'Open Team Hub GUI'},
+    {cmd:'/team create',desc:'Create a new team'},
+    {cmd:'/team join &lt;name&gt;',desc:'Join a public team'},
+    {cmd:'/team leave',desc:'Leave your team'},
+    {cmd:'/team invite &lt;player&gt;',desc:'Invite · Owner/Co-Owner/Manager'},
+    {cmd:'/team kick &lt;player&gt;',desc:'Kick a member · Owner'},
+    {cmd:'/team promote &lt;player&gt;',desc:'Promote · Manager → Co-Owner'},
+    {cmd:'/team demote &lt;player&gt;',desc:'Demote · Co-Owner → Manager'},
+    {cmd:'/team rename &lt;name&gt;',desc:'Rename · Manager+'},
+    {cmd:'/team sethome',desc:'Set home location · Manager+'},
+    {cmd:'/team disband',desc:'Disband the team · Owner'},
+    {cmd:'/team reload',desc:'Reload config &amp; DB · OP'},
+  ];
+  const cells = items.map((it,i) => `
+    <div class="cmd-cell" data-ci="${i}">
+      <div class="cc-cmd" contenteditable="true">${it.cmd}</div>
+      <div class="cc-desc" contenteditable="true">${it.desc}</div>
+    </div>`).join('');
+  return `<div class="block-commands">
+    <div class="cmd-grid">${cells}<button class="cmd-add-btn" onclick="addCommand(this)">＋</button></div>
+  </div>`;
+}
+
+function textHTML(d={}) {
+  return `<div class="block-text">
+    <div class="bt-content" contenteditable="true">${d.text||'Enter your text here. You can use <strong>bold text</strong> to highlight important parts.'}</div>
+  </div>`;
+}
+
+function depsHTML(d={}) {
+  const items = d.items || [
+    {dot:'req',name:'Vault',ver:'Required'},
+    {dot:'req',name:'PlaceholderAPI',ver:'Required'},
+    {dot:'opt',name:'Paper 1.21+',ver:'Recommended'},
+  ];
+  const badges = items.map(it => `
+    <div class="dep-badge">
+      <span class="dep-dot ${it.dot}"></span>
+      <span contenteditable="true">${it.name}</span>
+      <span style="color:var(--text-muted);font-size:9px" contenteditable="true">${it.ver}</span>
+    </div>`).join('');
+  return `<div class="block-deps">
+    <div class="deps-grid">${badges}
+      <button class="dep-add-btn" onclick="addDep(this)">+ Add dep</button>
+    </div>
+  </div>`;
+}
+
+// ─────────────────────────────────────
+// INTERACTIVE INIT
+// ─────────────────────────────────────
+function initBlockInteractions(wrapper, type) {
+  // Screenshots: file upload
+  if (type === 'screenshots') {
+    wrapper.querySelectorAll('.screenshot-cell').forEach(cell => {
+      cell.addEventListener('click', (e) => {
+        if (e.target.closest('[contenteditable]')) return;
+        const inp = document.createElement('input');
+        inp.type = 'file'; inp.accept = 'image/*';
+        inp.onchange = () => {
+          const file = inp.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = ev => {
+            const ph = cell.querySelector('.sc-placeholder');
+            let img = cell.querySelector('img');
+            if (!img) { img = document.createElement('img'); cell.insertBefore(img, cell.querySelector('.sc-overlay')); }
+            img.src = ev.target.result;
+            if (ph) ph.style.display = 'none';
+          };
+          reader.readAsDataURL(file);
+        };
+        inp.click();
+      });
+    });
+  }
+}
+
+// ─────────────────────────────────────
+// BLOCK INTERACTIONS
+// ─────────────────────────────────────
+function addTag(btn) {
+  const tag = document.createElement('span');
+  tag.className = 'bh-tag';
+  tag.contentEditable = 'true';
+  tag.textContent = 'new-tag';
+  btn.before(tag);
+  tag.focus();
+}
+
+function addFeatureCard(btn) {
+  const card = document.createElement('div');
+  card.className = 'feature-card';
+  card.innerHTML = `<span class="fc-icon" contenteditable="true">⭐</span>
+    <div class="fc-title" contenteditable="true">NEW FEATURE</div>
+    <div class="fc-desc" contenteditable="true">Describe this feature here.</div>`;
+  btn.before(card);
+}
+
+function addStat(btn) {
+  const grid = btn.previousElementSibling;
+  const item = document.createElement('div');
+  item.className = 'stat-item';
+  item.innerHTML = `<span class="sv" contenteditable="true">100%</span><span class="sl" contenteditable="true">LABEL</span>`;
+  grid.appendChild(item);
+}
+
+function addTableRow(btn) {
+  const tbody = btn.previousElementSibling.querySelector('tbody');
+  const cols = btn.previousElementSibling.querySelectorAll('th').length;
+  const tr = document.createElement('tr');
+  for (let i = 0; i < cols; i++) {
+    const td = document.createElement('td');
+    td.contentEditable = 'true';
+    td.textContent = i === 0 ? '🔰 New Rank' : '✗';
+    tr.appendChild(td);
+  }
+  tbody.appendChild(tr);
+}
+
+function addCommand(btn) {
+  const grid = btn.parentElement;
+  const cell = document.createElement('div');
+  cell.className = 'cmd-cell';
+  cell.innerHTML = `<div class="cc-cmd" contenteditable="true">/command</div><div class="cc-desc" contenteditable="true">Description</div>`;
+  grid.insertBefore(cell, btn);
+}
+
+function addDep(btn) {
+  const dep = document.createElement('div');
+  dep.className = 'dep-badge';
+  dep.innerHTML = `<span class="dep-dot opt"></span><span contenteditable="true">Plugin</span><span style="color:var(--text-muted);font-size:9px" contenteditable="true">Optional</span>`;
+  btn.before(dep);
+}
+
+// ─────────────────────────────────────
+// BLOCK MANAGEMENT
+// ─────────────────────────────────────
+function deleteBlock(id) {
+  const el = document.querySelector(`[data-id="${id}"]`);
+  if (el) {
+    const ind = el.nextElementSibling;
+    el.remove();
+    if (ind && ind.classList.contains('drop-indicator')) ind.remove();
+    if (selectedBlock && selectedBlock.dataset.id === id) {
+      selectedBlock = null;
+      showNoSelect();
+    }
+  }
+  checkDropHint();
+}
+
+function moveBlockUp(id) {
+  const el = document.querySelector(`[data-id="${id}"]`);
+  const prev = el.previousElementSibling;
+  if (prev && prev.classList.contains('block-wrapper')) {
+    el.parentNode.insertBefore(el, prev);
+    // move indicator too
+    const ind = el.nextElementSibling;
+    if (ind && ind.classList.contains('drop-indicator')) {
+      prev.after(ind);
+    }
+  }
+}
+
+function moveBlockDown(id) {
+  const el = document.querySelector(`[data-id="${id}"]`);
+  let next = el.nextElementSibling;
+  if (next && next.classList.contains('drop-indicator')) next = next.nextElementSibling;
+  if (next && next.classList.contains('block-wrapper')) {
+    next.after(el);
+    const ind = el.nextElementSibling;
+    if (ind && ind.classList.contains('drop-indicator')) next.after(ind);
+  }
+}
+
+function checkDropHint() {
+  const canvas = document.getElementById('page-canvas');
+  const hint = document.getElementById('drop-hint');
+  const footer = document.getElementById('page-footer');
+  const hasBlocks = canvas.querySelectorAll('.block-wrapper').length > 0;
+  hint.style.display = hasBlocks ? 'none' : 'flex';
+  footer.style.display = hasBlocks ? 'block' : 'none';
+}
+
+// ─────────────────────────────────────
+// SELECTION & PROPERTIES
+// ─────────────────────────────────────
+function selectBlock(wrapper) {
+  document.querySelectorAll('.block-wrapper').forEach(b => b.style.outline = '');
+  wrapper.style.outline = '1px solid var(--accent)';
+  selectedBlock = wrapper;
+  showProps(wrapper);
+}
+
+function showProps(wrapper) {
+  const type = wrapper.dataset.type;
+  const pc = document.getElementById('props-content');
+  let html = `<div class="prop-group"><div class="prop-label">Block Type</div>
+    <div style="font-size:11px;color:var(--text-secondary);padding:4px 0">${type.toUpperCase()}</div></div>`;
+  
+  html += `<div class="prop-group">
+    <div class="prop-label">Actions</div>
+    <button class="prop-btn" onclick="duplicateSelected()">⧉ Duplicate Block</button>
+    <button class="prop-btn danger" onclick="deleteSelected()">✕ Delete Block</button>
+  </div>`;
+
+  if (type === 'header') {
+    html += `<div class="prop-group">
+      <div class="prop-label">Title Split</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px">Click title text to edit inline</div>
+      <div class="prop-label" style="margin-top:8px">Accent Color</div>
+      <div class="color-row">
+        <input type="color" class="color-swatch" value="#3b82f6" oninput="setAccentColor(this.value)">
+        <input class="prop-input" value="#3b82f6" oninput="setAccentColor(this.value)">
+      </div>
+    </div>`;
+  }
+  
+  if (type === 'features') {
+    html += `<div class="prop-group">
+      <div class="prop-label">Layout</div>
+      <select class="prop-input" onchange="setFeatureCols(this.value)">
+        <option value="3">3 columns</option>
+        <option value="2">2 columns</option>
+        <option value="1">1 column</option>
+      </select>
+    </div>`;
+  }
+
+  if (type === 'table') {
+    html += `<div class="prop-group">
+      <div class="prop-label">Add Column</div>
+      <input class="prop-input" id="new-col-name" placeholder="Column name">
+      <button class="prop-btn" style="margin-top:5px" onclick="addTableCol()">+ Add Column</button>
+    </div>`;
+  }
+
+  pc.innerHTML = html;
+}
+
+function showNoSelect() {
+  document.getElementById('props-content').innerHTML = '<div class="no-select">Select a block to edit its properties</div>';
+}
+
+function duplicateSelected() {
+  if (!selectedBlock) return;
+  const clone = selectedBlock.cloneNode(true);
+  blockCounter++;
+  const newId = 'block-' + blockCounter;
+  clone.dataset.id = newId;
+  clone.querySelectorAll('[onclick]').forEach(el => {
+    el.setAttribute('onclick', el.getAttribute('onclick').replace(/block-\d+/g, newId));
+  });
+  selectedBlock.after(clone);
+  // Re-add drop indicator
+  const ind = document.createElement('div');
+  ind.className = 'drop-indicator';
+  clone.after(ind);
+  // Re-attach click
+  clone.addEventListener('click', e => {
+    if (e.target.closest('.bc-btn') || e.target.closest('.drag-handle')) return;
+    selectBlock(clone);
+  });
+  // Re-attach drag handle
+  const handle = clone.querySelector('.drag-handle');
+  if (handle) {
+    handle.addEventListener('dragstart', e => {
+      dragSrcEl = clone;
+      dragSrcType = null;
+      clone.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    handle.addEventListener('dragend', () => clone.classList.remove('dragging'));
+  }
+  selectBlock(clone);
+  checkDropHint();
+}
+
+function deleteSelected() {
+  if (selectedBlock) deleteBlock(selectedBlock.dataset.id);
+}
+
+function setAccentColor(val) {
+  if (!selectedBlock) return;
+  selectedBlock.querySelectorAll('.accent').forEach(el => el.style.color = val);
+  // sync inputs
+  const inputs = document.getElementById('props-content').querySelectorAll('input[type=color], .prop-input:not([type=color])');
+  inputs.forEach(i => i.value = val);
+}
+
+function setFeatureCols(val) {
+  if (!selectedBlock) return;
+  const grid = selectedBlock.querySelector('.features-grid');
+  if (grid) grid.style.gridTemplateColumns = `repeat(${val}, 1fr)`;
+}
+
+function addTableCol() {
+  if (!selectedBlock) return;
+  const name = document.getElementById('new-col-name').value || 'New Col';
+  const table = selectedBlock.querySelector('.perm-table');
+  if (!table) return;
+  const th = document.createElement('th');
+  th.contentEditable = 'true';
+  th.textContent = name;
+  table.querySelector('thead tr').appendChild(th);
+  table.querySelectorAll('tbody tr').forEach(tr => {
+    const td = document.createElement('td');
+    td.contentEditable = 'true';
+    td.textContent = '✗';
+    tr.appendChild(td);
+  });
+}
+
+// ─────────────────────────────────────
+// PRESETS
+// ─────────────────────────────────────
+function loadPreset(name) {
+  clearCanvas(true);
+  const canvas = document.getElementById('page-canvas');
+  const footer = document.getElementById('page-footer');
+  
+  let blocks = [];
+  if (name === 'teams') {
+    blocks = [
+      ['header',{name:'TeamsPlugin',accent:'Plugin',sub:'Competitive faction-style team management — without the bloat.',badge:'PAPER 1.21 · V1.0.0 · BY DARTMC',tags:['GUI-Driven','Vault Economy','SQLite','PlaceholderAPI','Async Saves','YAML Config']}],
+      ['divider',{label:'FEATURES',title:'Everything your players need.',sub:'Nothing they don\'t.'}],
+      ['features',{}],
+      ['divider',{label:'PERMISSIONS',title:'Rank Permission',sub:'Matrix'}],
+      ['table',{}],
+      ['divider',{label:'COMMANDS',title:'Full Command',sub:'Reference'}],
+      ['commands',{}],
+      ['divider',{label:'TECHNICAL',title:'Built for',sub:'performance'}],
+      ['stats',{}],
+      ['divider',{label:'DEPENDENCIES',title:'What you',sub:'need'}],
+      ['deps',{}],
+    ];
+    document.getElementById('footer-text').textContent = 'TeamsPlugin v1.0 · by DartMC · Paper 1.21 · GPL-3.0 safe configuration via YAML';
+  } else {
+    blocks = [
+      ['header',{name:'MyPlugin',accent:'Plugin',sub:'A powerful plugin for your Minecraft server.',badge:'PAPER 1.21 · V1.0.0 · BY YOU',tags:['GUI-Driven','Config']}],
+      ['divider',{label:'FEATURES',title:'What it',sub:'does.'}],
+      ['features',{items:[
+        {icon:'⚡',title:'FAST',desc:'Async operations keep your server smooth.'},
+        {icon:'🔧',title:'CONFIGURABLE',desc:'Full <strong>YAML config</strong> with hot-reload.'},
+        {icon:'🎨',title:'GUI-DRIVEN',desc:'Clean, minimal <strong>inventory GUIs</strong>.'},
+      ]}],
+      ['stats',{items:[{v:'1.21.x',l:'PAPER'},{v:'Async',l:'OPERATIONS'},{v:'100%',l:'CONFIGURABLE'}]}],
+    ];
+    document.getElementById('footer-text').textContent = 'MyPlugin v1.0 · by You · Paper 1.21';
+  }
+
+  blocks.forEach(([type, data]) => {
+    const block = createBlock(type, data);
+    canvas.insertBefore(block, footer);
+  });
+  checkDropHint();
+  toast(`Preset "${name}" loaded!`);
+}
+
+function clearCanvas(silent=false) {
+  const canvas = document.getElementById('page-canvas');
+  canvas.querySelectorAll('.block-wrapper, .drop-indicator').forEach(el => el.remove());
+  selectedBlock = null;
+  showNoSelect();
+  checkDropHint();
+  if (!silent) toast('Canvas cleared');
+}
+
+// ─────────────────────────────────────
+// EXPORT
+// ─────────────────────────────────────
+let exportDataURL = null;
+
+function exportImage() {
+  const canvas = document.getElementById('page-canvas');
+  // Hide controls temporarily
+  document.querySelectorAll('.block-controls,.drag-handle,.bc-btn,.features-add-btn,.cmd-add-btn,.stats-add-btn,.table-add-btn,.dep-add-btn,.bh-add-tag').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.block-wrapper').forEach(el => el.style.outline = '');
+  
+  html2canvas(canvas, {
+    backgroundColor: '#0f1319',
+    scale: 2,
+    useCORS: true,
+    allowTaint: true,
+    logging: false,
+  }).then(c => {
+    exportDataURL = c.toDataURL('image/png');
+    document.getElementById('export-preview').src = exportDataURL;
+    document.getElementById('export-overlay').classList.add('show');
+  }).finally(() => {
+    document.querySelectorAll('.block-controls,.drag-handle,.features-add-btn,.cmd-add-btn,.stats-add-btn,.table-add-btn,.dep-add-btn,.bh-add-tag').forEach(el => el.style.display = '');
+  });
+}
+
+function downloadExport() {
+  if (!exportDataURL) return;
+  const a = document.createElement('a');
+  a.href = exportDataURL;
+  a.download = 'plugin-page.png';
+  a.click();
+  toast('Image downloaded!');
+}
+
+function closeExport() {
+  document.getElementById('export-overlay').classList.remove('show');
+}
+
+function copyHTML() {
+  const canvas = document.getElementById('page-canvas');
+  navigator.clipboard.writeText(canvas.outerHTML).then(() => toast('HTML copied to clipboard!'));
+}
+
+// ─────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────
+let toastTimeout;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ─────────────────────────────────────
+// INIT
+// ─────────────────────────────────────
+checkDropHint();
+</script>
+</body>
+</html>
